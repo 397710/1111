@@ -1,15 +1,48 @@
+# CodeMagic 多平台构建配置
 workflows:
   flutter-multi:
     name: Flutter Multi-Platform Build
     environment:
-      flutter: stable
+      flutter: stable  # 使用稳定版Flutter
+      xcode: latest    # iOS构建需要最新Xcode
+    
+    # 构建脚本
     scripts:
-      # Android
-      - flutter build apk
-      - flutter build appbundle
-      # iOS (需要Mac环境)
-      - flutter build ipa --export-options-plist=ios/ExportOptions.plist
+      # Android构建
+      - name: Build Android APK
+        script: |
+          flutter build apk --release --target-platform android-arm,android-arm64
+          echo "APK生成路径："
+          ls build/app/outputs/flutter-apk/
+      
+      - name: Build Android App Bundle
+        script: |
+          flutter build appbundle --release
+          echo "AAB生成路径："
+          ls build/app/outputs/bundle/release/
+
+      # iOS构建（仅Mac环境执行）
+      - name: Build iOS IPA
+        script: |
+          if [ "$CM_BUILD_PLATFORM" = "macos" ]; then
+            flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+            echo "IPA生成路径："
+            ls build/ios/ipa/
+          else
+            echo "⚠️ iOS构建需要Mac环境，当前为$CM_BUILD_PLATFORM环境"
+          fi
+    
+    # 构建产物
     artifacts:
-      - build/**/outputs/**/*.apk
-      - build/**/outputs/**/*.aab
+      # Android产物
+      - build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/bundle/release/*.aab
+      
+      # iOS产物（仅Mac构建时存在）
       - build/ios/ipa/*.ipa
+
+    # 发布配置（可选）
+    publishing:
+      email:
+        recipients:
+          - your_email@example.com  # 替换为你的邮箱
