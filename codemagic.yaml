@@ -1,0 +1,15 @@
+workflows:
+  flutter-multi:
+    name: Flutter Multi-Platform Build
+    environment:
+      flutter: stable
+    scripts:
+      # Android
+      - flutter build apk
+      - flutter build appbundle
+      # iOS (需要Mac环境)
+      - flutter build ipa --export-options-plist=ios/ExportOptions.plist
+    artifacts:
+      - build/**/outputs/**/*.apk
+      - build/**/outputs/**/*.aab
+      - build/ios/ipa/*.ipa
