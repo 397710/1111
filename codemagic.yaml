@@ -1,37 +1,64 @@
 # CodeMagic 多平台构建配置
 workflows:
-  # 保留更完整的多平台配置
   flutter-multi:
     name: Flutter Multi-Platform Build
     environment:
-      flutter: stable  # 使用稳定版Flutter
-      xcode: latest    # iOS构建需要最新Xcode
+      flutter: stable
+      xcode: latest  # iOS构建需要最新Xcode
+      cocoapods: default
     
     scripts:
-      # Android构建（保留详细脚本）
+      # Android构建
+      - name: Setup Android
+        script: |
+          flutter pub get
+          echo "Android构建环境准备完成"
+
       - name: Build Android APK
         script: |
           flutter build apk --release --target-platform android-arm,android-arm64
           echo "APK生成路径："
-          ls build/app/outputs/flutter-apk/
+          ls -lh build/app/outputs/flutter-apk/
 
       - name: Build Android App Bundle
         script: |
           flutter build appbundle --release
           echo "AAB生成路径："
-          ls build/app/outputs/bundle/release/
+          ls -lh build/app/outputs/bundle/release/
 
-      # 保留基础Android构建
-      - flutter pub get
-      - flutter build apk
+      # iOS构建（仅Mac环境执行）
+      - name: Setup iOS Code Signing
+        script: |
+          if [ "$CM_BUILD_PLATFORM" = "macos" ]; then
+            keychain initialize
+            app-store-connect fetch-signing-files \
+              --type IOS_APP_STORE \
+              --bundle-id YOUR_BUNDLE_ID  # 替换为你的Bundle ID
+            xcode-project use-profiles
+          fi
+
+      - name: Build iOS IPA
+        script: |
+          if [ "$CM_BUILD_PLATFORM" = "macos" ]; then
+            flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+            echo "IPA生成路径："
+            ls -lh build/ios/ipa/
+          else
+            echo "⚠️ iOS构建需要Mac环境，当前为$CM_BUILD_PLATFORM环境"
+          fi
 
     artifacts:
-      # 合并产物路径
+      # Android产物
       - build/app/outputs/flutter-apk/*.apk
       - build/app/outputs/bundle/release/*.aab
-      - build/**/outputs/**/*.apk
+      
+      # iOS产物（仅Mac构建时存在）
+      - build/ios/ipa/*.ipa
 
     publishing:
       email:
         recipients:
           - your_email@example.com  # 替换为你的邮箱
+      app_store_connect:  # iOS自动发布到TestFlight
+        api_key: $APP_STORE_CONNECT_API_KEY
+        submit_to_testflight: true
